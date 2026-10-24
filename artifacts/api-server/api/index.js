@@ -27991,7 +27991,7 @@ var require_pino = __commonJS({
     function pinoBundlerAbsolutePath(p) {
       try {
         const path4 = __require("path");
-        const outputDir = "C:\\Users\\Keval\\Documents\\tracelytag\\my-merger\\tracly-tag-final\\artifacts\\api-server\\api";
+        const outputDir = "C:\\Users\\dhyey\\OneDrive\\Desktop\\tracly-tag-final\\artifacts\\api-server\\api";
         return path4.resolve(outputDir, p.replace(/^\.\//, ""));
       } catch (e) {
         const f = new Function("p", "return new URL(p, import.meta.url).pathname");
@@ -67013,7 +67013,7 @@ router2.post("/auth/passkey/register-verify", async (req, res) => {
       const [newUser] = await db.insert(usersTable).values({
         username,
         email,
-        phone: null,
+        phone: userData.phone || null,
         passwordHash,
         role: "client_admin",
         companyId: company.id

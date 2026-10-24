@@ -35,13 +35,13 @@ const loginSchema = z.object({
 
 const signUpSchema = z.object({
   username: z.string().min(1, "Username is required"),
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  phone: z.string().optional(),
+  email: z.string().min(1, "Email is required").email("Invalid email address"),
+  password: z.string().min(1, "Password is required").min(6, "Password must be at least 6 characters"),
+  phone: z.string().min(1, "Phone number is required"),
   companyName: z.string().min(1, "Company Name is required"),
-  companyEmail: z.string().email("Invalid company email"),
+  companyEmail: z.string().min(1, "Company email is required").email("Invalid company email"),
   companyWebsiteUrl: z.string().min(1, "Website URL is required"),
-  location: z.string().optional(),
+  location: z.string().min(1, "Session location is required"),
 });
 
 export default function Login() {
@@ -513,6 +513,9 @@ export default function Login() {
           const verifyData = await verifyRes.json();
           if (!verifyRes.ok) throw new Error(verifyData.error || "Passkey registration failed");
 
+          if (values.location) {
+            localStorage.setItem("traclytag_login_location", values.location);
+          }
           toast.success("Registered and logged in with Passkey!");
           queryClient.invalidateQueries({ queryKey: getGetCurrentUserQueryKey() });
           handleRedirect();
@@ -551,6 +554,7 @@ export default function Login() {
             userData: {
               username: values.username,
               email: values.email,
+              phone: values.phone,
               companyName: values.companyName,
               companyEmail: values.companyEmail,
               companyWebsiteUrl: values.companyWebsiteUrl,
@@ -565,6 +569,10 @@ export default function Login() {
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || "Registration verification failed");
+
+          if (values.location) {
+            localStorage.setItem("traclytag_login_location", values.location);
+          }
 
           setPasskeySuccess(true);
           toast.success("Registered successfully using Biometric Passkey Simulator!");
@@ -985,7 +993,7 @@ export default function Login() {
                               <FormItem className="space-y-2">
                                 <FormLabel className="text-[11px] font-bold tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1 uppercase">
                                   <span className="material-symbols-outlined text-[14px]">account_circle</span>
-                                  Username
+                                  Username <span className="text-red-500">*</span>
                                 </FormLabel>
                                 <div className="flex items-center w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 h-12 rounded-lg overflow-hidden pl-4 pr-2 gap-3 focus-within:border-safety-blue focus-within:ring-1 focus-within:ring-safety-blue/20 transition-all">
                                   <FormControl>
@@ -1007,7 +1015,7 @@ export default function Login() {
                               <FormItem className="space-y-2">
                                 <FormLabel className="text-[11px] font-bold tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1 uppercase">
                                   <span className="material-symbols-outlined text-[14px]">mail</span>
-                                  Email
+                                  Email <span className="text-red-500">*</span>
                                 </FormLabel>
                                 <div className="flex items-center w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 h-12 rounded-lg overflow-hidden pl-4 pr-2 gap-3 focus-within:border-safety-blue focus-within:ring-1 focus-within:ring-safety-blue/20 transition-all">
                                   <FormControl>
@@ -1030,7 +1038,7 @@ export default function Login() {
                               <FormItem className="space-y-2">
                                 <FormLabel className="text-[11px] font-bold tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1 uppercase">
                                   <span className="material-symbols-outlined text-[14px]">lock</span>
-                                  Password
+                                  Password <span className="text-red-500">*</span>
                                 </FormLabel>
                                 <div className="flex items-center w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 h-12 rounded-lg overflow-hidden pl-4 pr-2 gap-3 focus-within:border-safety-blue focus-within:ring-1 focus-within:ring-safety-blue/20 transition-all">
                                   <FormControl>
@@ -1053,12 +1061,12 @@ export default function Login() {
                               <FormItem className="space-y-2">
                                 <FormLabel className="text-[11px] font-bold tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1 uppercase">
                                   <span className="material-symbols-outlined text-[14px]">phone</span>
-                                  Phone
+                                  Phone <span className="text-red-500">*</span>
                                 </FormLabel>
                                 <div className="flex items-center w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 h-12 rounded-lg overflow-hidden pl-4 pr-2 gap-3 focus-within:border-safety-blue focus-within:ring-1 focus-within:ring-safety-blue/20 transition-all">
                                   <FormControl>
                                     <Input 
-                                      placeholder="Phone number (optional)" 
+                                      placeholder="Phone number" 
                                       className="bg-transparent border-0 shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm font-mono tracking-wide w-full h-full p-0 text-midnight-navy dark:text-white placeholder-slate-400" 
                                       {...field} 
                                     />
@@ -1078,7 +1086,7 @@ export default function Login() {
                               <FormItem className="space-y-2">
                                 <FormLabel className="text-[11px] font-bold tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1 uppercase">
                                   <span className="material-symbols-outlined text-[14px]">business</span>
-                                  Company Name
+                                  Company Name <span className="text-red-500">*</span>
                                 </FormLabel>
                                 <div className="flex items-center w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 h-12 rounded-lg overflow-hidden pl-4 pr-2 gap-3 focus-within:border-safety-blue focus-within:ring-1 focus-within:ring-safety-blue/20 transition-all">
                                   <FormControl>
@@ -1100,7 +1108,7 @@ export default function Login() {
                               <FormItem className="space-y-2">
                                 <FormLabel className="text-[11px] font-bold tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1 uppercase">
                                   <span className="material-symbols-outlined text-[14px]">mail</span>
-                                  Company Email
+                                  Company Email <span className="text-red-500">*</span>
                                 </FormLabel>
                                 <div className="flex items-center w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 h-12 rounded-lg overflow-hidden pl-4 pr-2 gap-3 focus-within:border-safety-blue focus-within:ring-1 focus-within:ring-safety-blue/20 transition-all">
                                   <FormControl>
@@ -1123,7 +1131,7 @@ export default function Login() {
                               <FormItem className="space-y-2">
                                 <FormLabel className="text-[11px] font-bold tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1 uppercase">
                                   <span className="material-symbols-outlined text-[14px]">language</span>
-                                  Website URL
+                                  Website URL <span className="text-red-500">*</span>
                                 </FormLabel>
                                 <div className="flex items-center w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 h-12 rounded-lg overflow-hidden pl-4 pr-2 gap-3 focus-within:border-safety-blue focus-within:ring-1 focus-within:ring-safety-blue/20 transition-all">
                                   <FormControl>
@@ -1145,12 +1153,12 @@ export default function Login() {
                               <FormItem className="space-y-2">
                                 <FormLabel className="text-[11px] font-bold tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1 uppercase">
                                   <span className="material-symbols-outlined text-[14px]">location_on</span>
-                                  Session Location
+                                  Session Location <span className="text-red-500">*</span>
                                 </FormLabel>
                                 <div className="flex items-center w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 h-12 rounded-lg overflow-hidden pl-4 pr-1 gap-3 focus-within:border-safety-blue focus-within:ring-1 focus-within:ring-safety-blue/20 transition-all">
                                   <FormControl>
                                     <Input 
-                                      placeholder="Start location (optional)" 
+                                      placeholder="Start location" 
                                       className="bg-transparent border-0 shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm tracking-wide w-full h-full p-0 text-midnight-navy dark:text-white placeholder-slate-400" 
                                       {...field} 
                                     />
@@ -1189,13 +1197,13 @@ export default function Login() {
                           <Button 
                             type="button"
                             variant="outline"
-                            onClick={() => {
-                              const values = signUpForm.getValues();
-                              if (!values.username || !values.email || !values.companyName) {
-                                toast.error("Please fill in Username, Email, and Company Name to register with a Passkey.");
+                            onClick={async () => {
+                              const isValid = await signUpForm.trigger();
+                              if (!isValid) {
+                                toast.error("Please fill in all required fields to register with a Passkey.");
                                 return;
                               }
-                              handlePasskeyRegister(values);
+                              handlePasskeyRegister(signUpForm.getValues());
                             }}
                             className="w-full h-12 rounded-lg flex items-center justify-center gap-1.5 border-slate-200 dark:border-slate-700 bg-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold text-xs uppercase tracking-wider cursor-pointer transition-colors"
                           >

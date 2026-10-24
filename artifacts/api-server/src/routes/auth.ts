@@ -598,7 +598,7 @@ router.post("/auth/passkey/register-verify", async (req, res): Promise<void> => 
         .values({
           username,
           email,
-          phone: null,
+          phone: userData.phone || null,
           passwordHash,
           role: "client_admin",
           companyId: company.id,

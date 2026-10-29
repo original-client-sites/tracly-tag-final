@@ -1,10 +1,10 @@
 import { Router, type IRouter } from "express";
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
-import { db, usersTable, companiesTable, passkeysTable, deviceCodesTable, systemConfigsTable } from "@workspace/db";
+import { eq, or, and, sql } from "drizzle-orm";
+import { db, usersTable, companiesTable, passkeysTable, deviceCodesTable, systemConfigsTable, passwordResetsTable } from "@workspace/db";
 import { LoginBody, LoginResponse, RegisterBody } from "@workspace/api-zod";
 import crypto from "crypto";
-import { sendOtpEmail } from '../lib/mail.js';
+import { sendOtpEmail, sendPasswordResetEmail } from '../lib/mail.js';
 
 const router: IRouter = Router();
 
@@ -17,14 +17,28 @@ router.post("/auth/register", async (req, res): Promise<void> => {
 
   const { username, email, password, phone, companyName, companyEmail, companyWebsiteUrl } = parsed.data;
 
-  // Verify if username already exists
+  if (!phone || !phone.trim()) {
+    res.status(400).json({ error: "Phone number is required" });
+    return;
+  }
+
+  // Verify if username or email already exists
   const [existingUser] = await db
     .select()
     .from(usersTable)
-    .where(eq(usersTable.username, username));
+    .where(
+      or(
+        sql`lower(${usersTable.username}) = ${username.trim().toLowerCase()}`,
+        sql`lower(${usersTable.email}) = ${email.trim().toLowerCase()}`
+      )
+    );
 
   if (existingUser) {
-    res.status(400).json({ error: "Username already exists" });
+    if (existingUser.username.toLowerCase() === username.trim().toLowerCase()) {
+      res.status(400).json({ error: "Username already exists" });
+      return;
+    }
+    res.status(400).json({ error: "Email already exists" });
     return;
   }
 
@@ -102,10 +116,19 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
+  const loginIdentifier = ((parsed.data as any).username || (req.body as any)?.email || "").trim();
+  const cleanIdentifier = loginIdentifier.toLowerCase();
+
   const [user] = await db
     .select()
     .from(usersTable)
-    .where(eq(usersTable.username, parsed.data.username));
+    .where(
+      or(
+        eq(usersTable.username, loginIdentifier),
+        sql`lower(${usersTable.username}) = ${cleanIdentifier}`,
+        sql`lower(${usersTable.email}) = ${cleanIdentifier}`
+      )
+    );
 
   if (!user) {
     res.status(401).json({ error: "Invalid credentials" });
@@ -653,16 +676,25 @@ router.post("/auth/passkey/register-verify", async (req, res): Promise<void> => 
 
 router.post("/auth/passkey/login-options", async (req, res): Promise<void> => {
   const { username } = req.body;
-  if (!username) {
-    res.status(400).json({ error: "Username is required for passkey login" });
+  if (!username || typeof username !== "string" || !username.trim()) {
+    res.status(400).json({ error: "Username or email is required for passkey login" });
     return;
   }
+
+  const rawUsername = username.trim();
+  const cleanUsername = rawUsername.toLowerCase();
 
   try {
     const [user] = await db
       .select()
       .from(usersTable)
-      .where(eq(usersTable.username, username));
+      .where(
+        or(
+          eq(usersTable.username, rawUsername),
+          sql`lower(${usersTable.username}) = ${cleanUsername}`,
+          sql`lower(${usersTable.email}) = ${cleanUsername}`
+        )
+      );
 
     if (!user) {
       res.status(404).json({ error: "User not found" });
@@ -1067,6 +1099,181 @@ router.post("/auth/device/authorize", async (req, res): Promise<void> => {
     res.json({ success: true, status: finalStatus });
   } catch (err: any) {
     res.status(500).json({ error: err.message || "Failed to authorize device" });
+  }
+});
+
+router.post("/auth/forgot-password", async (req, res): Promise<void> => {
+  const { identifier } = req.body;
+  if (!identifier || typeof identifier !== "string" || !identifier.trim()) {
+    res.status(400).json({ error: "Email or username is required." });
+    return;
+  }
+
+  const cleanIdentifier = identifier.trim().toLowerCase();
+
+  try {
+    const users = await db
+      .select()
+      .from(usersTable)
+      .where(or(
+        eq(usersTable.username, cleanIdentifier),
+        eq(usersTable.email, cleanIdentifier)
+      ));
+
+    const user = users[0];
+
+    if (!user || !user.email) {
+      res.json({
+        success: true,
+        message: "If an account matches this identifier, password reset instructions have been sent to the registered email.",
+      });
+      return;
+    }
+
+    if (!user.isActive) {
+      res.status(403).json({ error: "This account has been deactivated. Please contact your system administrator." });
+      return;
+    }
+
+    const token = crypto.randomBytes(32).toString("hex");
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+
+    await db.insert(passwordResetsTable).values({
+      userId: user.id,
+      token,
+      otpCode,
+      expiresAt,
+      used: false,
+    });
+
+    const origin = req.get("origin") || req.get("referer");
+    let baseUrl = origin ? origin.replace(/\/$/, "") : (process.env.FRONTEND_URL || "http://localhost:5173");
+    try {
+      const parsedUrl = new URL(baseUrl);
+      baseUrl = `${parsedUrl.protocol}//${parsedUrl.host}`;
+    } catch {
+      baseUrl = "http://localhost:5173";
+    }
+
+    const resetUrl = `${baseUrl}/reset-password?token=${token}`;
+
+    await sendPasswordResetEmail(user.email, resetUrl, otpCode);
+
+    const [localPart, domainPart] = user.email.split("@");
+    const maskedEmail = localPart.length > 2
+      ? `${localPart[0]}***${localPart[localPart.length - 1]}@${domainPart || ""}`
+      : `${localPart[0]}*@${domainPart || ""}`;
+
+    res.json({
+      success: true,
+      email: maskedEmail,
+      message: `Password reset instructions sent to ${maskedEmail}`,
+    });
+  } catch (err: any) {
+    req.log.error({ err }, "Forgot password error");
+    res.status(500).json({ error: "Failed to initiate password reset. Please try again later." });
+  }
+});
+
+router.post("/auth/verify-reset-token", async (req, res): Promise<void> => {
+  const { token, otpCode } = req.body;
+
+  if (!token && !otpCode) {
+    res.status(400).json({ valid: false, error: "Token or verification code is required." });
+    return;
+  }
+
+  try {
+    const conditions = [];
+    if (token && typeof token === "string" && token.trim()) {
+      conditions.push(eq(passwordResetsTable.token, token.trim()));
+    }
+    if (otpCode && typeof otpCode === "string" && otpCode.trim()) {
+      conditions.push(eq(passwordResetsTable.otpCode, otpCode.trim()));
+    }
+
+    const records = await db
+      .select()
+      .from(passwordResetsTable)
+      .where(or(...conditions));
+
+    const record = records.find((r) => !r.used);
+
+    if (!record) {
+      res.status(400).json({ valid: false, error: "Invalid or previously used reset request." });
+      return;
+    }
+
+    if (new Date(record.expiresAt).getTime() < Date.now()) {
+      res.status(400).json({ valid: false, error: "This password reset request has expired. Please request a new one." });
+      return;
+    }
+
+    res.json({ valid: true });
+  } catch (err: any) {
+    res.status(500).json({ valid: false, error: err.message || "Failed to verify token." });
+  }
+});
+
+router.post("/auth/reset-password", async (req, res): Promise<void> => {
+  const { token, otpCode, newPassword } = req.body;
+
+  if (!newPassword || typeof newPassword !== "string" || newPassword.length < 6) {
+    res.status(400).json({ error: "New password must be at least 6 characters long." });
+    return;
+  }
+
+  if (!token && !otpCode) {
+    res.status(400).json({ error: "Reset token or verification code is required." });
+    return;
+  }
+
+  try {
+    const conditions = [];
+    if (token && typeof token === "string" && token.trim()) {
+      conditions.push(eq(passwordResetsTable.token, token.trim()));
+    }
+    if (otpCode && typeof otpCode === "string" && otpCode.trim()) {
+      conditions.push(eq(passwordResetsTable.otpCode, otpCode.trim()));
+    }
+
+    const records = await db
+      .select()
+      .from(passwordResetsTable)
+      .where(or(...conditions));
+
+    const record = records.find((r) => !r.used);
+
+    if (!record) {
+      res.status(400).json({ error: "Invalid or previously used password reset link/code." });
+      return;
+    }
+
+    if (new Date(record.expiresAt).getTime() < Date.now()) {
+      res.status(400).json({ error: "This password reset link has expired. Please request a new one." });
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    await db
+      .update(usersTable)
+      .set({ passwordHash })
+      .where(eq(usersTable.id, record.userId));
+
+    await db
+      .update(passwordResetsTable)
+      .set({ used: true })
+      .where(eq(passwordResetsTable.id, record.id));
+
+    res.json({
+      success: true,
+      message: "Password has been successfully reset. You may now sign in with your new credentials.",
+    });
+  } catch (err: any) {
+    req.log.error({ err }, "Reset password error");
+    res.status(500).json({ error: "Failed to reset password. Please try again." });
   }
 });
 

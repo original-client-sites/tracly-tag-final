@@ -51,7 +51,7 @@ spec:
                 name: tracelytag-frontend-svc
                 port:
                   number: 80
-    # 2. Public API & Verification Endpoint (Mobile Scans & Partner Integrations)
+    # 3. Public API & Verification Endpoint (Mobile Scans & Partner Integrations)
     - host: api.tracelytag.com
       http:
         paths:
@@ -62,3 +62,15 @@ spec:
                 name: tracelytag-backend-svc
                 port:
                   number: 3000
+    # 4. Mailpit Webmail UI (Development & Testing)
+    - host: mail.tracelytag.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: tracelytag-mailpit-svc
+                port:
+                  number: 8025
+

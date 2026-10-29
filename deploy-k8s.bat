@@ -59,6 +59,7 @@ echo [3/8] Deploying infrastructure dependencies (PostgreSQL, PgBouncer, Redis).
 kubectl apply -f k8s\01b-postgres.yaml
 kubectl apply -f k8s\02-pgbouncer.yaml
 kubectl apply -f k8s\03-redis.yaml
+kubectl apply -f k8s\03b-mailpit.yaml
 
 :: 5. Deploy Workloads
 echo [4/8] Deploying Application Services (Backend API ^& Frontend Nginx)...

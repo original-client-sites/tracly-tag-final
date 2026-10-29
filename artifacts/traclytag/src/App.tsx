@@ -11,6 +11,7 @@ import NotFound from "@/pages/not-found";
 import { useDevToolsProtection } from "./hooks/useDevToolsProtection";
 
 import Login from "@/pages/login";
+import ResetPassword from "@/pages/reset-password";
 import PublicVerify from "@/pages/public-verify";
 import Activate from "@/pages/activate";
 import { BrandedPortal } from "@/components/BrandedPortal";
@@ -205,6 +206,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
+      <Route path="/reset-password" component={ResetPassword} />
       <Route path="/code/:serial" component={PublicVerify} />
       <Route path="/activate" component={Activate} />
       <Route path="/">

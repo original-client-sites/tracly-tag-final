@@ -65,4 +65,7 @@ terminal_logs/*
 old-dev-built.txt
 docker-strt.bat
 new-task.md
-graphify-out/cache/
+# Graphify local knowledge graph & configuration
+graphify-out/
+graphify.md
+.agents/

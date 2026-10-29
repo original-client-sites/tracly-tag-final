@@ -21971,7 +21971,7 @@ var require_request = __commonJS({
       var index = header.indexOf(",");
       return index !== -1 ? header.substring(0, index).trim() : header.trim();
     });
-    defineGetter(req, "secure", function secure2() {
+    defineGetter(req, "secure", function secure() {
       return this.protocol === "https";
     });
     defineGetter(req, "ip", function ip() {
@@ -21994,7 +21994,7 @@ var require_request = __commonJS({
     defineGetter(req, "path", function path4() {
       return parse(this).pathname;
     });
-    defineGetter(req, "host", function host2() {
+    defineGetter(req, "host", function host() {
       var trust = this.app.get("trust proxy fn");
       var val = this.get("X-Forwarded-Host");
       if (!val || !trust(this.socket.remoteAddress, 0)) {
@@ -22005,11 +22005,11 @@ var require_request = __commonJS({
       return val || void 0;
     });
     defineGetter(req, "hostname", function hostname() {
-      var host2 = this.host;
-      if (!host2) return;
-      var offset = host2[0] === "[" ? host2.indexOf("]") + 1 : 0;
-      var index = host2.indexOf(":", offset);
-      return index !== -1 ? host2.substring(0, index) : host2;
+      var host = this.host;
+      if (!host) return;
+      var offset = host[0] === "[" ? host.indexOf("]") + 1 : 0;
+      var index = host.indexOf(":", offset);
+      return index !== -1 ? host.substring(0, index) : host;
     });
     defineGetter(req, "fresh", function() {
       var method = this.method;
@@ -29502,16 +29502,16 @@ var require_pg_types = __commonJS({
 var require_defaults = __commonJS({
   "../../node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/defaults.js"(exports, module) {
     "use strict";
-    var user2;
+    var user;
     try {
-      user2 = process.platform === "win32" ? process.env.USERNAME : process.env.USER;
+      user = process.platform === "win32" ? process.env.USERNAME : process.env.USER;
     } catch {
     }
     module.exports = {
       // database host. defaults to localhost
       host: "localhost",
       // database user's name
-      user: user2,
+      user,
       // name of database to connect
       database: void 0,
       // database user's password
@@ -29759,8 +29759,8 @@ var require_utils5 = __commonJS({
         return Array.from(new Uint8Array(hash2)).map((b) => b.toString(16).padStart(2, "0")).join("");
       }
     }
-    async function postgresMd5PasswordHash(user2, password, salt) {
-      const inner = await md5(password + user2);
+    async function postgresMd5PasswordHash(user, password, salt) {
+      const inner = await md5(password + user);
       const outer = await md5(Buffer.concat([Buffer.from(inner), salt]));
       return "md5" + outer;
     }
@@ -31738,11 +31738,11 @@ var require_connection = __commonJS({
           }
         });
       }
-      connect(port2, host2) {
+      connect(port, host) {
         const self2 = this;
         this._connecting = true;
         this.stream.setNoDelay(true);
-        this.stream.connect(port2, host2);
+        this.stream.connect(port, host);
         this.stream.once("connect", function() {
           if (self2._keepAlive) {
             self2.stream.setKeepAlive(true, self2._keepAliveInitialDelayMillis);
@@ -31764,7 +31764,7 @@ var require_connection = __commonJS({
         }
         if (this.sslNegotiation === "direct") {
           return this.stream.once("connect", function() {
-            self2.upgradeToSSL(host2, reportStreamError);
+            self2.upgradeToSSL(host, reportStreamError);
           });
         }
         this.stream.once("data", function(buffer) {
@@ -31779,10 +31779,10 @@ var require_connection = __commonJS({
               self2.stream.end();
               return self2.emit("error", new Error("There was an error establishing an SSL connection"));
           }
-          self2.upgradeToSSL(host2, reportStreamError);
+          self2.upgradeToSSL(host, reportStreamError);
         });
       }
-      upgradeToSSL(host2, reportStreamError) {
+      upgradeToSSL(host, reportStreamError) {
         const self2 = this;
         const options = {
           socket: self2.stream,
@@ -31790,7 +31790,7 @@ var require_connection = __commonJS({
           // back to `host` and then to 'localhost'. `servername` must stay unset
           // for IP addresses (see below), so `host` is needed to keep certificate
           // validation working when connecting to an IP address.
-          host: host2
+          host
         };
         if (self2.ssl !== true) {
           Object.assign(options, self2.ssl);
@@ -31802,8 +31802,8 @@ var require_connection = __commonJS({
           options.ALPNProtocols = ["postgresql"];
         }
         const net = __require("net");
-        if (net.isIP && net.isIP(host2) === 0) {
-          options.servername = host2;
+        if (net.isIP && net.isIP(host) === 0) {
+          options.servername = host;
         }
         try {
           self2.stream = stream.getSecureStream(options);
@@ -32082,18 +32082,18 @@ var require_helper = __commonJS({
       }, true);
     };
     module.exports.getPassword = function(connInfo, stream, cb) {
-      var pass2;
+      var pass;
       var lineStream = stream.pipe(split());
       function onLine(line2) {
         var entry = parseLine(line2);
         if (entry && isValidEntry(entry) && matcher(connInfo, entry)) {
-          pass2 = entry[passKey];
+          pass = entry[passKey];
           lineStream.end();
         }
       }
       var onEnd = function() {
         stream.destroy();
-        cb(pass2);
+        cb(pass);
       };
       var onErr = function(err) {
         stream.destroy();
@@ -32427,13 +32427,13 @@ var require_client = __commonJS({
       _getPassword(cb) {
         const con = this.connection;
         if (typeof this.password === "function") {
-          this._Promise.resolve().then(() => this.password(this.connectionParameters)).then((pass2) => {
-            if (pass2 !== void 0) {
-              if (typeof pass2 !== "string") {
+          this._Promise.resolve().then(() => this.password(this.connectionParameters)).then((pass) => {
+            if (pass !== void 0) {
+              if (typeof pass !== "string") {
                 con.emit("error", new TypeError("Password must be a string"));
                 return;
               }
-              this.connectionParameters.password = this.password = pass2;
+              this.connectionParameters.password = this.password = pass;
             } else {
               this.connectionParameters.password = this.password = null;
             }
@@ -32446,10 +32446,10 @@ var require_client = __commonJS({
         } else {
           try {
             const pgPass = require_lib4();
-            pgPass(this.connectionParameters, (pass2) => {
-              if (void 0 !== pass2) {
+            pgPass(this.connectionParameters, (pass) => {
+              if (void 0 !== pass) {
                 pgPassDeprecationNotice();
-                this.connectionParameters.password = this.password = pass2;
+                this.connectionParameters.password = this.password = pass;
               }
               cb();
             });
@@ -60237,7 +60237,7 @@ var HealthCheckResponse = objectType({
   "status": stringType()
 });
 var LoginBody = objectType({
-  "username": stringType(),
+  "username": stringType().describe("Username or email address"),
   "password": stringType()
 });
 var LoginResponse = objectType({
@@ -60249,13 +60249,15 @@ var LoginResponse = objectType({
   "companyName": stringType().nullable(),
   "companyUrl": stringType().nullish(),
   "isActive": booleanType(),
-  "enabledModules": stringType()
+  "enabledModules": stringType(),
+  "isImpersonating": booleanType().optional(),
+  "impersonatorUsername": stringType().optional()
 });
 var RegisterBody = objectType({
   "username": stringType(),
   "email": stringType(),
   "password": stringType(),
-  "phone": stringType().nullish(),
+  "phone": stringType(),
   "companyName": stringType(),
   "companyEmail": stringType(),
   "companyWebsiteUrl": stringType()
@@ -60269,7 +60271,9 @@ var GetCurrentUserResponse = objectType({
   "companyName": stringType().nullable(),
   "companyUrl": stringType().nullish(),
   "isActive": booleanType(),
-  "enabledModules": stringType()
+  "enabledModules": stringType(),
+  "isImpersonating": booleanType().optional(),
+  "impersonatorUsername": stringType().optional()
 });
 var listCompaniesResponseGstinRegExp = new RegExp("^[0-9]{2}[a-zA-Z0-9]{10}[a-zA-Z0-9][zZ][a-zA-Z0-9]?$");
 var ListCompaniesResponseItem = objectType({
@@ -60291,13 +60295,12 @@ var ListCompaniesResponseItem = objectType({
 });
 var ListCompaniesResponse = arrayType(ListCompaniesResponseItem);
 var createCompanyBodyGstinRegExp = new RegExp("^[0-9]{2}[a-zA-Z0-9]{10}[a-zA-Z0-9][zZ][a-zA-Z0-9]?$");
-var companyUrlVerifyRegExp = new RegExp("^$|^verify\\.[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
 var CreateCompanyBody = objectType({
   "name": stringType(),
   "email": stringType(),
   "address": stringType(),
   "gstin": stringType().regex(createCompanyBodyGstinRegExp).nullish(),
-  "companyUrl": stringType().regex(companyUrlVerifyRegExp, "Domain must use 'verify' subdomain (e.g. verify.company.com)").nullish(),
+  "companyUrl": stringType().nullish(),
   "pan": stringType().nullish(),
   "cin": stringType().nullish(),
   "msmeRegistrationNo": stringType().nullish(),
@@ -60325,7 +60328,7 @@ var GetMyCompanyResponse = objectType({
   "createdAt": coerce.date()
 });
 var UpdateMyCompanyBody = objectType({
-  "companyUrl": stringType().regex(companyUrlVerifyRegExp, "Domain must use 'verify' subdomain (e.g. verify.company.com)").nullish()
+  "companyUrl": stringType().nullish()
 });
 var updateMyCompanyResponseGstinRegExp = new RegExp("^[0-9]{2}[a-zA-Z0-9]{10}[a-zA-Z0-9][zZ][a-zA-Z0-9]?$");
 var UpdateMyCompanyResponse = objectType({
@@ -60526,7 +60529,6 @@ var ListLocationsResponseItem = objectType({
 });
 var ListLocationsResponse = arrayType(ListLocationsResponseItem);
 var CreateLocationBody = objectType({
-  "companyId": numberType().nullish(),
   "locationType": stringType(),
   "uniqueName": stringType(),
   "locationName": stringType(),
@@ -60698,7 +60700,8 @@ var GetProductReportResponseItem = objectType({
   "size": stringType(),
   "total": numberType(),
   "mapped": numberType(),
-  "unmapped": numberType()
+  "unmapped": numberType(),
+  "createdAt": stringType()
 });
 var GetProductReportResponse = arrayType(GetProductReportResponseItem);
 var GetShipperSummaryQueryParams = objectType({
@@ -64539,6 +64542,7 @@ __export(schema_exports, {
   deviceCodesTable: () => deviceCodesTable,
   locationsTable: () => locationsTable,
   passkeysTable: () => passkeysTable,
+  passwordResetsTable: () => passwordResetsTable,
   productsTable: () => productsTable,
   ssoRequestsTable: () => ssoRequestsTable,
   systemConfigsTable: () => systemConfigsTable,
@@ -64717,6 +64721,17 @@ var ssoRequestsTable = pgTable("sso_requests", {
   companyName: text("company_name"),
   requestedRole: text("requested_role").notNull().default("operator"),
   status: text("status").notNull().default("pending"),
+  createdAt: text("created_at").notNull().$defaultFn(() => (/* @__PURE__ */ new Date()).toISOString())
+});
+
+// ../../lib/db/src/schema/passwordResets.ts
+var passwordResetsTable = pgTable("password_resets", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => usersTable.id, { onDelete: "cascade" }).notNull(),
+  token: text("token").notNull().unique(),
+  otpCode: text("otp_code").notNull(),
+  expiresAt: text("expires_at").notNull(),
+  used: boolean("used").notNull().default(false),
   createdAt: text("created_at").notNull().$defaultFn(() => (/* @__PURE__ */ new Date()).toISOString())
 });
 
@@ -66492,46 +66507,116 @@ import crypto2 from "crypto";
 
 // src/lib/mail.ts
 import nodemailer from "nodemailer";
-var host = process.env.SMTP_HOST || "smtp.gmail.com";
-var port = parseInt(process.env.SMTP_PORT || "587", 10);
-var secure = process.env.SMTP_SECURE === "true";
-var user = process.env.SMTP_USER;
-var pass = process.env.SMTP_PASS;
-var transporter = nodemailer.createTransport({
-  host,
-  port,
-  secure,
-  auth: {
-    user,
-    pass
+function getTransporter() {
+  const host = process.env.SMTP_HOST || (process.env.NODE_ENV === "production" ? "mailpit" : "localhost");
+  const port = parseInt(process.env.SMTP_PORT || "1025", 10);
+  const secure = process.env.SMTP_SECURE === "true";
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  const hasValidAuth = !!user && !!pass && !user.startsWith("your-") && !pass.startsWith("your-");
+  const config2 = {
+    host,
+    port,
+    secure,
+    connectionTimeout: 8e3,
+    greetingTimeout: 8e3,
+    socketTimeout: 1e4
+  };
+  if (hasValidAuth) {
+    config2.auth = { user, pass };
   }
-});
+  const fromAddress = hasValidAuth ? user : `"TracelyTag Security" <noreply@tracelytag.local>`;
+  return {
+    transporter: nodemailer.createTransport(config2),
+    fromAddress,
+    hasValidAuth,
+    host,
+    port
+  };
+}
 async function sendOtpEmail(to, otpCode) {
-  if (!user || !pass) {
-    console.log(`[SMTP Mail Bypass] SMTP credentials missing in env. OTP for ${to} is: ${otpCode}`);
-    return;
-  }
+  const { transporter, fromAddress, host, port } = getTransporter();
   const mailOptions = {
-    from: `"TracelyTag Security" <${user}>`,
+    from: fromAddress,
     to,
     subject: "Your TracelyTag One-Time Password (OTP)",
     text: `Your One-Time Password (OTP) for TracelyTag login is: ${otpCode}. It is valid for 5 minutes.`,
     html: `
-      <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px; max-width: 500px; margin: 0 auto; color: #1E293B;">
-        <h2 style="color: #2563EB; border-bottom: 2px solid #2563EB; padding-bottom: 10px; text-transform: uppercase; margin-top: 0;">TracelyTag Login OTP</h2>
-        <p>Dear User,</p>
-        <p>A login attempt was made for your TracelyTag account. Please use the following One-Time Password (OTP) to complete your sign-in:</p>
-        <div style="background-color: #F8FAFC; border: 1px dashed #CBD5E1; padding: 15px; text-align: center; border-radius: 8px; margin: 20px 0;">
-          <span style="font-size: 28px; font-weight: bold; letter-spacing: 6px; color: #0F172A; font-family: monospace;">${otpCode}</span>
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; max-width: 500px; margin: 0 auto; color: #1e293b; background: #ffffff;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+          <h2 style="color: #2563eb; margin: 0; font-size: 20px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">TracelyTag Authentication</h2>
         </div>
-        <p style="font-size: 11px; color: #64748B;">This OTP is valid for 5 minutes. If you did not initiate this login, please change your password immediately.</p>
-        <hr style="border: 0; border-top: 1px solid #E2E8F0; margin: 20px 0;" />
-        <p style="font-size: 10px; color: #94A3B8; text-align: center; margin-bottom: 0;">TracelyTag Industrial Security Panel \u2022 Automated System Message</p>
+        <p style="font-size: 14px; line-height: 1.5; color: #475569; margin: 12px 0;">Dear User,</p>
+        <p style="font-size: 14px; line-height: 1.5; color: #475569; margin: 12px 0;">A sign-in request was received for your TracelyTag account. Enter the one-time verification code below to authorize your session:</p>
+        <div style="background-color: #f1f5f9; border: 1px dashed #cbd5e1; padding: 18px; text-align: center; border-radius: 8px; margin: 24px 0;">
+          <span style="font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #0f172a; font-family: monospace;">${otpCode}</span>
+        </div>
+        <p style="font-size: 12px; color: #64748b; margin-top: 16px;">This OTP is valid for <strong>5 minutes</strong>. If you did not initiate this login attempt, please protect your credentials immediately.</p>
+        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0 16px;" />
+        <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">TracelyTag Industrial Security Panel \u2022 Automated System Notification</p>
       </div>
     `
   };
-  await transporter.sendMail(mailOptions);
-  console.log(`[SMTP Mail] OTP email successfully sent to ${to}`);
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`[SMTP Mail] OTP email successfully sent to ${to} via ${host}:${port}`);
+  } catch (err) {
+    console.warn(`[SMTP Mail Warning] Could not deliver email to ${to} (${err.message}). Falling back to system console:`);
+    console.log(`[SECURITY NOTICE] OTP Code for ${to}: >>> ${otpCode} <<<`);
+  }
+}
+async function sendPasswordResetEmail(to, resetUrl, otpCode) {
+  const { transporter, fromAddress, host, port } = getTransporter();
+  const mailOptions = {
+    from: fromAddress,
+    to,
+    subject: "Reset Your TracelyTag Account Password",
+    text: `You requested to reset your TracelyTag account password.
+
+Click the link below or enter the 6-digit verification code:
+Verification Code: ${otpCode}
+Reset Link: ${resetUrl}
+
+This link and code will expire in 15 minutes.
+If you did not make this request, you can safely ignore this email.`,
+    html: `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 28px; border: 1px solid #e2e8f0; border-radius: 12px; max-width: 520px; margin: 0 auto; color: #1e293b; background: #ffffff;">
+        <div style="border-bottom: 2px solid #2563eb; padding-bottom: 12px; margin-bottom: 20px;">
+          <h2 style="color: #2563eb; margin: 0; font-size: 20px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">TracelyTag Security</h2>
+          <span style="font-size: 12px; color: #64748b;">Password Recovery Protocol</span>
+        </div>
+        <p style="font-size: 14px; line-height: 1.5; color: #334155;">Hello,</p>
+        <p style="font-size: 14px; line-height: 1.5; color: #334155;">A password reset request was initiated for your TracelyTag account. Click the button below to establish a new password:</p>
+        
+        <div style="text-align: center; margin: 28px 0;">
+          <a href="${resetUrl}" style="background-color: #2563eb; color: #ffffff; padding: 12px 28px; border-radius: 8px; font-weight: 600; text-decoration: none; font-size: 14px; display: inline-block; box-shadow: 0 2px 4px rgba(37,99,235,0.2);">
+            Reset Password
+          </a>
+        </div>
+
+        <p style="font-size: 13px; color: #64748b; margin-top: 20px; text-align: center;">Or enter this 6-digit confirmation code directly on the reset screen:</p>
+        <div style="background-color: #f8fafc; border: 1px dashed #cbd5e1; padding: 12px; text-align: center; border-radius: 8px; margin: 12px 0;">
+          <span style="font-size: 24px; font-weight: 700; letter-spacing: 6px; color: #0f172a; font-family: monospace;">${otpCode}</span>
+        </div>
+
+        <p style="font-size: 12px; color: #64748b; line-height: 1.4; word-break: break-all;">
+          If the button above does not work, copy and paste this link into your browser:<br/>
+          <a href="${resetUrl}" style="color: #2563eb; text-decoration: underline;">${resetUrl}</a>
+        </p>
+
+        <p style="font-size: 12px; color: #94a3b8; margin-top: 20px;">This request expires in <strong>15 minutes</strong>. If you did not request a password change, please disregard this email.</p>
+        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 24px 0 16px;" />
+        <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0;">TracelyTag Industrial Security Panel \u2022 Automated Security Notice</p>
+      </div>
+    `
+  };
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`[SMTP Mail] Password reset email successfully sent to ${to} via ${host}:${port}`);
+  } catch (err) {
+    console.warn(`[SMTP Mail Warning] Could not deliver reset email to ${to} (${err.message}). Falling back to system console:`);
+    console.log(`[SECURITY NOTICE] Password Reset Link for ${to}: >>> ${resetUrl} <<< (Code: ${otpCode})`);
+  }
 }
 
 // src/routes/auth.ts
@@ -66543,9 +66628,22 @@ router2.post("/auth/register", async (req, res) => {
     return;
   }
   const { username, email, password, phone, companyName, companyEmail, companyWebsiteUrl } = parsed.data;
-  const [existingUser] = await db.select().from(usersTable).where(eq(usersTable.username, username));
+  if (!phone || !phone.trim()) {
+    res.status(400).json({ error: "Phone number is required" });
+    return;
+  }
+  const [existingUser] = await db.select().from(usersTable).where(
+    or(
+      sql`lower(${usersTable.username}) = ${username.trim().toLowerCase()}`,
+      sql`lower(${usersTable.email}) = ${email.trim().toLowerCase()}`
+    )
+  );
   if (existingUser) {
-    res.status(400).json({ error: "Username already exists" });
+    if (existingUser.username.toLowerCase() === username.trim().toLowerCase()) {
+      res.status(400).json({ error: "Username already exists" });
+      return;
+    }
+    res.status(400).json({ error: "Email already exists" });
     return;
   }
   try {
@@ -66559,7 +66657,7 @@ router2.post("/auth/register", async (req, res) => {
       throw new Error("Failed to create company");
     }
     const passwordHash = await bcryptjs_default.hash(password, 10);
-    const [user2] = await db.insert(usersTable).values({
+    const [user] = await db.insert(usersTable).values({
       username,
       email,
       phone: phone ?? null,
@@ -66567,11 +66665,11 @@ router2.post("/auth/register", async (req, res) => {
       role: "client_admin",
       companyId: company.id
     }).returning();
-    if (!user2) {
+    if (!user) {
       throw new Error("Failed to create user");
     }
     const isProduction2 = process.env.NODE_ENV === "production" || !!process.env.VERCEL;
-    res.cookie("connect.sid", user2.id.toString(), {
+    res.cookie("connect.sid", user.id.toString(), {
       signed: true,
       httpOnly: true,
       maxAge: 1e3 * 60 * 60 * 24 * 7,
@@ -66581,15 +66679,15 @@ router2.post("/auth/register", async (req, res) => {
     });
     res.status(201).json(
       LoginResponse.parse({
-        id: user2.id,
-        username: user2.username,
-        email: user2.email,
-        role: user2.role,
-        companyId: user2.companyId,
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        companyId: user.companyId,
         companyName: company.name,
         companyUrl: company.companyUrl ?? null,
-        isActive: user2.isActive,
-        enabledModules: user2.enabledModules,
+        isActive: user.isActive,
+        enabledModules: user.enabledModules,
         subscriptionPlan: company.subscriptionPlan,
         subscriptionStatus: company.subscriptionStatus,
         subscriptionExpiresAt: company.subscriptionExpiresAt
@@ -66606,12 +66704,20 @@ router2.post("/auth/login", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [user2] = await db.select().from(usersTable).where(eq(usersTable.username, parsed.data.username));
-  if (!user2) {
+  const loginIdentifier = (parsed.data.username || req.body?.email || "").trim();
+  const cleanIdentifier = loginIdentifier.toLowerCase();
+  const [user] = await db.select().from(usersTable).where(
+    or(
+      eq(usersTable.username, loginIdentifier),
+      sql`lower(${usersTable.username}) = ${cleanIdentifier}`,
+      sql`lower(${usersTable.email}) = ${cleanIdentifier}`
+    )
+  );
+  if (!user) {
     res.status(401).json({ error: "Invalid credentials" });
     return;
   }
-  const ok = await bcryptjs_default.compare(parsed.data.password, user2.passwordHash);
+  const ok = await bcryptjs_default.compare(parsed.data.password, user.passwordHash);
   if (!ok) {
     res.status(401).json({ error: "Invalid credentials" });
     return;
@@ -66621,14 +66727,14 @@ router2.post("/auth/login", async (req, res) => {
   let subscriptionPlan = null;
   let subscriptionStatus = null;
   let subscriptionExpiresAt = null;
-  if (user2.companyId) {
+  if (user.companyId) {
     const [c] = await db.select({
       name: companiesTable.name,
       companyUrl: companiesTable.companyUrl,
       subscriptionPlan: companiesTable.subscriptionPlan,
       subscriptionStatus: companiesTable.subscriptionStatus,
       subscriptionExpiresAt: companiesTable.subscriptionExpiresAt
-    }).from(companiesTable).where(eq(companiesTable.id, user2.companyId));
+    }).from(companiesTable).where(eq(companiesTable.id, user.companyId));
     companyName = c?.name ?? null;
     companyUrl = c?.companyUrl ?? null;
     subscriptionPlan = c?.subscriptionPlan ?? null;
@@ -66645,14 +66751,14 @@ router2.post("/auth/login", async (req, res) => {
     }
   } catch (err) {
   }
-  if (enableOtpSystem && user2.role !== "master" && user2.role !== "super_master") {
+  if (enableOtpSystem && user.role !== "master" && user.role !== "super_master") {
     const otpCode = Math.floor(1e5 + Math.random() * 9e5).toString();
     try {
-      await sendOtpEmail(user2.email, otpCode);
+      await sendOtpEmail(user.email, otpCode);
     } catch (err) {
-      req.log.error({ err, email: user2.email }, "Failed to send OTP email");
+      req.log.error({ err, email: user.email }, "Failed to send OTP email");
     }
-    const otpPayload = JSON.stringify({ userId: user2.id, otp: otpCode });
+    const otpPayload = JSON.stringify({ userId: user.id, otp: otpCode });
     res.cookie("temp_otp", otpPayload, {
       signed: true,
       httpOnly: true,
@@ -66663,14 +66769,14 @@ router2.post("/auth/login", async (req, res) => {
     });
     res.json({
       otpRequired: true,
-      userId: user2.id,
-      email: user2.email,
+      userId: user.id,
+      email: user.email,
       otpCode
       // Fallback for developer/offline testing
     });
     return;
   }
-  res.cookie("connect.sid", user2.id.toString(), {
+  res.cookie("connect.sid", user.id.toString(), {
     signed: true,
     httpOnly: true,
     maxAge: 1e3 * 60 * 60 * 24 * 7,
@@ -66680,15 +66786,15 @@ router2.post("/auth/login", async (req, res) => {
   });
   res.json(
     LoginResponse.parse({
-      id: user2.id,
-      username: user2.username,
-      email: user2.email,
-      role: user2.role,
-      companyId: user2.companyId,
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      companyId: user.companyId,
       companyName,
       companyUrl,
-      isActive: user2.isActive,
-      enabledModules: user2.enabledModules,
+      isActive: user.isActive,
+      enabledModules: user.enabledModules,
       subscriptionPlan,
       subscriptionStatus,
       subscriptionExpiresAt
@@ -66713,8 +66819,8 @@ router2.post("/auth/verify-otp", async (req, res) => {
     res.status(400).json({ error: "Incorrect OTP code. Please try again." });
     return;
   }
-  const [user2] = await db.select().from(usersTable).where(eq(usersTable.id, payload.userId));
-  if (!user2) {
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, payload.userId));
+  if (!user) {
     res.status(401).json({ error: "User not found" });
     return;
   }
@@ -66723,14 +66829,14 @@ router2.post("/auth/verify-otp", async (req, res) => {
   let subscriptionPlan = null;
   let subscriptionStatus = null;
   let subscriptionExpiresAt = null;
-  if (user2.companyId) {
+  if (user.companyId) {
     const [c] = await db.select({
       name: companiesTable.name,
       companyUrl: companiesTable.companyUrl,
       subscriptionPlan: companiesTable.subscriptionPlan,
       subscriptionStatus: companiesTable.subscriptionStatus,
       subscriptionExpiresAt: companiesTable.subscriptionExpiresAt
-    }).from(companiesTable).where(eq(companiesTable.id, user2.companyId));
+    }).from(companiesTable).where(eq(companiesTable.id, user.companyId));
     companyName = c?.name ?? null;
     companyUrl = c?.companyUrl ?? null;
     subscriptionPlan = c?.subscriptionPlan ?? null;
@@ -66739,7 +66845,7 @@ router2.post("/auth/verify-otp", async (req, res) => {
   }
   res.clearCookie("temp_otp");
   const isProduction2 = process.env.NODE_ENV === "production" || !!process.env.VERCEL;
-  res.cookie("connect.sid", user2.id.toString(), {
+  res.cookie("connect.sid", user.id.toString(), {
     signed: true,
     httpOnly: true,
     maxAge: 1e3 * 60 * 60 * 24 * 7,
@@ -66749,15 +66855,15 @@ router2.post("/auth/verify-otp", async (req, res) => {
   });
   res.json(
     LoginResponse.parse({
-      id: user2.id,
-      username: user2.username,
-      email: user2.email,
-      role: user2.role,
-      companyId: user2.companyId,
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      companyId: user.companyId,
       companyName,
       companyUrl,
-      isActive: user2.isActive,
-      enabledModules: user2.enabledModules,
+      isActive: user.isActive,
+      enabledModules: user.enabledModules,
       subscriptionPlan,
       subscriptionStatus,
       subscriptionExpiresAt
@@ -66999,8 +67105,8 @@ router2.post("/auth/passkey/register-verify", async (req, res) => {
       }
     }
     const { username, email, companyName, companyEmail, companyWebsiteUrl } = userData;
-    let [user2] = await db.select().from(usersTable).where(eq(usersTable.username, username));
-    if (!user2) {
+    let [user] = await db.select().from(usersTable).where(eq(usersTable.username, username));
+    if (!user) {
       const [company] = await db.insert(companiesTable).values({
         name: companyName,
         email: companyEmail,
@@ -67019,22 +67125,22 @@ router2.post("/auth/passkey/register-verify", async (req, res) => {
         companyId: company.id
       }).returning();
       if (!newUser) throw new Error("Failed to create user");
-      user2 = newUser;
+      user = newUser;
     }
     const publicKey = isSimulated ? "MOCK_SIMULATED_PUBLIC_KEY" : response?.attestationObject || "STANDARD_WEBAUTHN_KEY";
     await db.insert(passkeysTable).values({
-      userId: user2.id,
+      userId: user.id,
       credentialId,
       publicKey,
       counter: 0
     });
     let companyNameVal = null;
-    if (user2.companyId) {
-      const [c] = await db.select({ name: companiesTable.name }).from(companiesTable).where(eq(companiesTable.id, user2.companyId));
+    if (user.companyId) {
+      const [c] = await db.select({ name: companiesTable.name }).from(companiesTable).where(eq(companiesTable.id, user.companyId));
       companyNameVal = c?.name ?? null;
     }
     const isProduction2 = process.env.NODE_ENV === "production" || !!process.env.VERCEL;
-    res.cookie("connect.sid", user2.id.toString(), {
+    res.cookie("connect.sid", user.id.toString(), {
       signed: true,
       httpOnly: true,
       maxAge: 1e3 * 60 * 60 * 24 * 7,
@@ -67042,11 +67148,11 @@ router2.post("/auth/passkey/register-verify", async (req, res) => {
       sameSite: "lax"
     });
     res.json({
-      id: user2.id,
-      username: user2.username,
-      email: user2.email,
-      role: user2.role,
-      companyId: user2.companyId,
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      companyId: user.companyId,
       companyName: companyNameVal
     });
   } catch (err) {
@@ -67056,17 +67162,25 @@ router2.post("/auth/passkey/register-verify", async (req, res) => {
 });
 router2.post("/auth/passkey/login-options", async (req, res) => {
   const { username } = req.body;
-  if (!username) {
-    res.status(400).json({ error: "Username is required for passkey login" });
+  if (!username || typeof username !== "string" || !username.trim()) {
+    res.status(400).json({ error: "Username or email is required for passkey login" });
     return;
   }
+  const rawUsername = username.trim();
+  const cleanUsername = rawUsername.toLowerCase();
   try {
-    const [user2] = await db.select().from(usersTable).where(eq(usersTable.username, username));
-    if (!user2) {
+    const [user] = await db.select().from(usersTable).where(
+      or(
+        eq(usersTable.username, rawUsername),
+        sql`lower(${usersTable.username}) = ${cleanUsername}`,
+        sql`lower(${usersTable.email}) = ${cleanUsername}`
+      )
+    );
+    if (!user) {
       res.status(404).json({ error: "User not found" });
       return;
     }
-    const userPasskeys = await db.select().from(passkeysTable).where(eq(passkeysTable.userId, user2.id));
+    const userPasskeys = await db.select().from(passkeysTable).where(eq(passkeysTable.userId, user.id));
     if (userPasskeys.length === 0) {
       res.status(400).json({ error: "No passkeys registered for this user" });
       return;
@@ -67108,8 +67222,8 @@ router2.post("/auth/passkey/login-verify", async (req, res) => {
       res.status(401).json({ error: "Passkey credential not registered" });
       return;
     }
-    const [user2] = await db.select().from(usersTable).where(eq(usersTable.id, passkey.userId));
-    if (!user2) {
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, passkey.userId));
+    if (!user) {
       res.status(404).json({ error: "User not found" });
       return;
     }
@@ -67127,12 +67241,12 @@ router2.post("/auth/passkey/login-verify", async (req, res) => {
     const currentCounter = passkey.counter;
     await db.update(passkeysTable).set({ counter: currentCounter + 1 }).where(eq(passkeysTable.id, passkey.id));
     let companyNameVal = null;
-    if (user2.companyId) {
-      const [c] = await db.select({ name: companiesTable.name }).from(companiesTable).where(eq(companiesTable.id, user2.companyId));
+    if (user.companyId) {
+      const [c] = await db.select({ name: companiesTable.name }).from(companiesTable).where(eq(companiesTable.id, user.companyId));
       companyNameVal = c?.name ?? null;
     }
     const isProduction2 = process.env.NODE_ENV === "production" || !!process.env.VERCEL;
-    res.cookie("connect.sid", user2.id.toString(), {
+    res.cookie("connect.sid", user.id.toString(), {
       signed: true,
       httpOnly: true,
       maxAge: 1e3 * 60 * 60 * 24 * 7,
@@ -67140,11 +67254,11 @@ router2.post("/auth/passkey/login-verify", async (req, res) => {
       sameSite: "lax"
     });
     res.json({
-      id: user2.id,
-      username: user2.username,
-      email: user2.email,
-      role: user2.role,
-      companyId: user2.companyId,
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      companyId: user.companyId,
       companyName: companyNameVal
     });
   } catch (err) {
@@ -67168,9 +67282,9 @@ router2.post("/auth/device/code", async (req, res) => {
       status: "pending",
       expiresAt
     });
-    const host2 = req.get("host") || "localhost:5173";
+    const host = req.get("host") || "localhost:5173";
     const protocol = req.protocol || "http";
-    const verificationUri = `${protocol}://${host2.split(":")[0]}:${host2.split(":")[1] || "5173"}/activate`;
+    const verificationUri = `${protocol}://${host.split(":")[0]}:${host.split(":")[1] || "5173"}/activate`;
     res.json({
       device_code: deviceCode,
       user_code: userCode,
@@ -67207,18 +67321,18 @@ router2.post("/auth/device/token", async (req, res) => {
       return;
     }
     if (record.status === "approved" && record.userId) {
-      const [user2] = await db.select().from(usersTable).where(eq(usersTable.id, record.userId));
-      if (!user2) {
+      const [user] = await db.select().from(usersTable).where(eq(usersTable.id, record.userId));
+      if (!user) {
         res.status(400).json({ error: "invalid_grant" });
         return;
       }
       let companyNameVal = null;
-      if (user2.companyId) {
-        const [c] = await db.select({ name: companiesTable.name }).from(companiesTable).where(eq(companiesTable.id, user2.companyId));
+      if (user.companyId) {
+        const [c] = await db.select({ name: companiesTable.name }).from(companiesTable).where(eq(companiesTable.id, user.companyId));
         companyNameVal = c?.name ?? null;
       }
       const isProduction2 = process.env.NODE_ENV === "production" || !!process.env.VERCEL;
-      res.cookie("connect.sid", user2.id.toString(), {
+      res.cookie("connect.sid", user.id.toString(), {
         signed: true,
         httpOnly: true,
         maxAge: 1e3 * 60 * 60 * 24 * 7,
@@ -67228,11 +67342,11 @@ router2.post("/auth/device/token", async (req, res) => {
       res.json({
         status: "success",
         user: {
-          id: user2.id,
-          username: user2.username,
-          email: user2.email,
-          role: user2.role,
-          companyId: user2.companyId,
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          role: user.role,
+          companyId: user.companyId,
           companyName: companyNameVal
         }
       });
@@ -67285,30 +67399,30 @@ router2.post("/auth/send-test-email", async (req, res) => {
       res.status(401).json({ error: "Invalid Super Master credentials" });
       return;
     }
-    const host2 = process.env.SMTP_HOST || "smtp.gmail.com";
-    const port2 = parseInt(process.env.SMTP_PORT || "587", 10);
-    const secure2 = process.env.SMTP_SECURE === "true";
-    const user2 = process.env.SMTP_USER;
-    const pass2 = process.env.SMTP_PASS;
-    if (!user2 || !pass2) {
+    const host = process.env.SMTP_HOST || "smtp.gmail.com";
+    const port = parseInt(process.env.SMTP_PORT || "587", 10);
+    const secure = process.env.SMTP_SECURE === "true";
+    const user = process.env.SMTP_USER;
+    const pass = process.env.SMTP_PASS;
+    if (!user || !pass) {
       res.status(400).json({
         error: "SMTP configuration missing in environment variables. Please check SMTP_USER and SMTP_PASS."
       });
       return;
     }
     const nodemailer2 = await import("nodemailer");
-    const transporter2 = nodemailer2.createTransport({
-      host: host2,
-      port: port2,
-      secure: secure2,
+    const transporter = nodemailer2.createTransport({
+      host,
+      port,
+      secure,
       auth: {
-        user: user2,
-        pass: pass2
+        user,
+        pass
       },
       connectionTimeout: 8e3
     });
     const mailOptions = {
-      from: `"TracelyTag SMTP Test" <${user2}>`,
+      from: `"TracelyTag SMTP Test" <${user}>`,
       to: recipient,
       subject: "TracelyTag SMTP Mail Test - Success",
       text: `Hello,
@@ -67317,10 +67431,10 @@ This is a test email sent from the TracelyTag Industrial Security Panel.
 If you received this message, your SMTP settings are configured correctly!
 
 Details:
-Host: ${host2}
-Port: ${port2}
-Secure: ${secure2}
-SMTP User: ${user2}
+Host: ${host}
+Port: ${port}
+Secure: ${secure}
+SMTP User: ${user}
 
 Automated System Test.`,
       html: `
@@ -67330,16 +67444,16 @@ Automated System Test.`,
           <p>This is a test email sent from your TracelyTag platform to verify email delivery. The connection is working correctly!</p>
           <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 16px; border-radius: 8px; margin: 20px 0; font-family: monospace; font-size: 13px;">
             <strong>SMTP Configuration Details:</strong><br/>
-            \u2022 <strong>Host:</strong> ${host2}<br/>
-            \u2022 <strong>Port:</strong> ${port2}<br/>
-            \u2022 <strong>Secure:</strong> ${secure2 ? "Yes (SSL/TLS)" : "No (STARTTLS)"}<br/>
-            \u2022 <strong>SMTP User:</strong> ${user2}
+            \u2022 <strong>Host:</strong> ${host}<br/>
+            \u2022 <strong>Port:</strong> ${port}<br/>
+            \u2022 <strong>Secure:</strong> ${secure ? "Yes (SSL/TLS)" : "No (STARTTLS)"}<br/>
+            \u2022 <strong>SMTP User:</strong> ${user}
           </div>
           <p style="font-size: 11px; color: #64748b;">This email was triggered manually by the Super Master account. No action is required.</p>
         </div>
       `
     };
-    await transporter2.sendMail(mailOptions);
+    await transporter.sendMail(mailOptions);
     res.json({ success: true, message: `Test email successfully sent to ${recipient}` });
   } catch (err) {
     req.log.error({ err }, "SMTP Test send failed");
@@ -67376,6 +67490,131 @@ router2.post("/auth/device/authorize", async (req, res) => {
     res.json({ success: true, status: finalStatus });
   } catch (err) {
     res.status(500).json({ error: err.message || "Failed to authorize device" });
+  }
+});
+router2.post("/auth/forgot-password", async (req, res) => {
+  const { identifier } = req.body;
+  if (!identifier || typeof identifier !== "string" || !identifier.trim()) {
+    res.status(400).json({ error: "Email or username is required." });
+    return;
+  }
+  const cleanIdentifier = identifier.trim().toLowerCase();
+  try {
+    const users = await db.select().from(usersTable).where(or(
+      eq(usersTable.username, cleanIdentifier),
+      eq(usersTable.email, cleanIdentifier)
+    ));
+    const user = users[0];
+    if (!user || !user.email) {
+      res.json({
+        success: true,
+        message: "If an account matches this identifier, password reset instructions have been sent to the registered email."
+      });
+      return;
+    }
+    if (!user.isActive) {
+      res.status(403).json({ error: "This account has been deactivated. Please contact your system administrator." });
+      return;
+    }
+    const token = crypto2.randomBytes(32).toString("hex");
+    const otpCode = Math.floor(1e5 + Math.random() * 9e5).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1e3).toISOString();
+    await db.insert(passwordResetsTable).values({
+      userId: user.id,
+      token,
+      otpCode,
+      expiresAt,
+      used: false
+    });
+    const origin = req.get("origin") || req.get("referer");
+    let baseUrl = origin ? origin.replace(/\/$/, "") : process.env.FRONTEND_URL || "http://localhost:5173";
+    try {
+      const parsedUrl = new URL(baseUrl);
+      baseUrl = `${parsedUrl.protocol}//${parsedUrl.host}`;
+    } catch {
+      baseUrl = "http://localhost:5173";
+    }
+    const resetUrl = `${baseUrl}/reset-password?token=${token}`;
+    await sendPasswordResetEmail(user.email, resetUrl, otpCode);
+    const [localPart, domainPart] = user.email.split("@");
+    const maskedEmail = localPart.length > 2 ? `${localPart[0]}***${localPart[localPart.length - 1]}@${domainPart || ""}` : `${localPart[0]}*@${domainPart || ""}`;
+    res.json({
+      success: true,
+      email: maskedEmail,
+      message: `Password reset instructions sent to ${maskedEmail}`
+    });
+  } catch (err) {
+    req.log.error({ err }, "Forgot password error");
+    res.status(500).json({ error: "Failed to initiate password reset. Please try again later." });
+  }
+});
+router2.post("/auth/verify-reset-token", async (req, res) => {
+  const { token, otpCode } = req.body;
+  if (!token && !otpCode) {
+    res.status(400).json({ valid: false, error: "Token or verification code is required." });
+    return;
+  }
+  try {
+    const conditions = [];
+    if (token && typeof token === "string" && token.trim()) {
+      conditions.push(eq(passwordResetsTable.token, token.trim()));
+    }
+    if (otpCode && typeof otpCode === "string" && otpCode.trim()) {
+      conditions.push(eq(passwordResetsTable.otpCode, otpCode.trim()));
+    }
+    const records = await db.select().from(passwordResetsTable).where(or(...conditions));
+    const record = records.find((r) => !r.used);
+    if (!record) {
+      res.status(400).json({ valid: false, error: "Invalid or previously used reset request." });
+      return;
+    }
+    if (new Date(record.expiresAt).getTime() < Date.now()) {
+      res.status(400).json({ valid: false, error: "This password reset request has expired. Please request a new one." });
+      return;
+    }
+    res.json({ valid: true });
+  } catch (err) {
+    res.status(500).json({ valid: false, error: err.message || "Failed to verify token." });
+  }
+});
+router2.post("/auth/reset-password", async (req, res) => {
+  const { token, otpCode, newPassword } = req.body;
+  if (!newPassword || typeof newPassword !== "string" || newPassword.length < 6) {
+    res.status(400).json({ error: "New password must be at least 6 characters long." });
+    return;
+  }
+  if (!token && !otpCode) {
+    res.status(400).json({ error: "Reset token or verification code is required." });
+    return;
+  }
+  try {
+    const conditions = [];
+    if (token && typeof token === "string" && token.trim()) {
+      conditions.push(eq(passwordResetsTable.token, token.trim()));
+    }
+    if (otpCode && typeof otpCode === "string" && otpCode.trim()) {
+      conditions.push(eq(passwordResetsTable.otpCode, otpCode.trim()));
+    }
+    const records = await db.select().from(passwordResetsTable).where(or(...conditions));
+    const record = records.find((r) => !r.used);
+    if (!record) {
+      res.status(400).json({ error: "Invalid or previously used password reset link/code." });
+      return;
+    }
+    if (new Date(record.expiresAt).getTime() < Date.now()) {
+      res.status(400).json({ error: "This password reset link has expired. Please request a new one." });
+      return;
+    }
+    const passwordHash = await bcryptjs_default.hash(newPassword, 10);
+    await db.update(usersTable).set({ passwordHash }).where(eq(usersTable.id, record.userId));
+    await db.update(passwordResetsTable).set({ used: true }).where(eq(passwordResetsTable.id, record.id));
+    res.json({
+      success: true,
+      message: "Password has been successfully reset. You may now sign in with your new credentials."
+    });
+  } catch (err) {
+    req.log.error({ err }, "Reset password error");
+    res.status(500).json({ error: "Failed to reset password. Please try again." });
   }
 });
 var auth_default = router2;
@@ -67723,8 +67962,8 @@ router4.put("/users/profile", requireAuth, async (req, res) => {
     return;
   }
   try {
-    const [user2] = await db.select().from(usersTable).where(eq(usersTable.id, req.user.id));
-    if (!user2) {
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.user.id));
+    if (!user) {
       res.status(404).json({ error: "User not found" });
       return;
     }
@@ -67732,7 +67971,7 @@ router4.put("/users/profile", requireAuth, async (req, res) => {
       email,
       phone: phone ?? null
     };
-    if (username && username !== user2.username) {
+    if (username && username !== user.username) {
       const trimmedUsername = username.trim();
       if (trimmedUsername.length < 3) {
         res.status(400).json({ error: "Username must be at least 3 characters long" });
@@ -67750,7 +67989,7 @@ router4.put("/users/profile", requireAuth, async (req, res) => {
         res.status(400).json({ error: "Current password is required to set a new password" });
         return;
       }
-      const isMatch = await bcryptjs_default.compare(currentPassword, user2.passwordHash);
+      const isMatch = await bcryptjs_default.compare(currentPassword, user.passwordHash);
       if (!isMatch) {
         res.status(400).json({ error: "Incorrect current password" });
         return;
@@ -69360,8 +69599,8 @@ var import_express9 = __toESM(require_express2(), 1);
 init_drizzle_orm();
 var router9 = (0, import_express9.Router)();
 router9.use("/reports", requireAuth);
-function companyScope(user2) {
-  return user2.role === "master" || user2.role === "super_master" ? void 0 : eq(productsTable.companyId, user2.companyId);
+function companyScope(user) {
+  return user.role === "master" || user.role === "super_master" ? void 0 : eq(productsTable.companyId, user.companyId);
 }
 function dateRangeConds(from, to) {
   const conds = [];
@@ -70238,47 +70477,47 @@ router12.get("/system/info", async (req, res) => {
   }
 });
 router12.get("/system/smtp-status", async (req, res) => {
-  const host2 = process.env.SMTP_HOST || "smtp.gmail.com";
-  const port2 = parseInt(process.env.SMTP_PORT || "587", 10);
-  const secure2 = process.env.SMTP_SECURE === "true";
-  const user2 = process.env.SMTP_USER;
-  const pass2 = process.env.SMTP_PASS;
-  if (!user2 || !pass2) {
+  const host = process.env.SMTP_HOST || "smtp.gmail.com";
+  const port = parseInt(process.env.SMTP_PORT || "587", 10);
+  const secure = process.env.SMTP_SECURE === "true";
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  if (!user || !pass) {
     res.json({
       configured: false,
       status: "unconfigured",
-      host: host2,
-      port: port2,
-      user: user2 || null,
+      host,
+      port,
+      user: user || null,
       message: "SMTP user/password missing in environment variables"
     });
     return;
   }
   try {
     const nodemailer2 = await import("nodemailer");
-    const transporter2 = nodemailer2.createTransport({
-      host: host2,
-      port: port2,
-      secure: secure2,
-      auth: { user: user2, pass: pass2 },
+    const transporter = nodemailer2.createTransport({
+      host,
+      port,
+      secure,
+      auth: { user, pass },
       connectionTimeout: 5e3
     });
-    await transporter2.verify();
+    await transporter.verify();
     res.json({
       configured: true,
       status: "connected",
-      host: host2,
-      port: port2,
-      user: user2,
+      host,
+      port,
+      user,
       message: "SMTP server connection verified successfully"
     });
   } catch (err) {
     res.json({
       configured: true,
       status: "error",
-      host: host2,
-      port: port2,
-      user: user2,
+      host,
+      port,
+      user,
       message: err.message || "SMTP connection verification failed"
     });
   }
@@ -70337,20 +70576,20 @@ var loadUser = async (req, res, next) => {
         } else if (token.toLowerCase().includes("admin")) {
           username = "demo_admin";
         }
-        const [user3] = await db.select().from(usersTable).where(eq(usersTable.username, username));
-        if (user3) {
-          if (!user3.isActive) {
+        const [user2] = await db.select().from(usersTable).where(eq(usersTable.username, username));
+        if (user2) {
+          if (!user2.isActive) {
             next();
             return;
           }
           req.user = {
-            id: user3.id,
-            username: user3.username,
-            email: user3.email,
-            role: user3.role,
-            companyId: user3.companyId,
-            isActive: user3.isActive,
-            enabledModules: user3.enabledModules
+            id: user2.id,
+            username: user2.username,
+            email: user2.email,
+            role: user2.role,
+            companyId: user2.companyId,
+            isActive: user2.isActive,
+            enabledModules: user2.enabledModules
           };
           next();
           return;
@@ -70363,19 +70602,19 @@ var loadUser = async (req, res, next) => {
     next();
     return;
   }
-  const [user2] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
-  if (user2) {
-    if (!user2.isActive) {
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+  if (user) {
+    if (!user.isActive) {
       res.clearCookie("connect.sid");
     } else {
       req.user = {
-        id: user2.id,
-        username: user2.username,
-        email: user2.email,
-        role: user2.role,
-        companyId: user2.companyId,
-        isActive: user2.isActive,
-        enabledModules: user2.enabledModules
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        companyId: user.companyId,
+        isActive: user.isActive,
+        enabledModules: user.enabledModules
       };
     }
   }

@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tracelytag-mailpit
+  namespace: tracelytag
+  labels:
+    app: tracelytag-mailpit
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tracelytag-mailpit
+  template:
+    metadata:
+      labels:
+        app: tracelytag-mailpit
+    spec:
+      containers:
+        - name: mailpit
+          image: axllent/mailpit:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: MP_MAX_MESSAGES
+              value: "5000"
+            - name: MP_DATABASE
+              value: ""
+            - name: MP_SMTP_AUTH_ACCEPT_ANY
+              value: "1"
+            - name: MP_SMTP_AUTH_ALLOW_INSECURE
+              value: "1"
+          ports:
+            - containerPort: 1025
+              name: smtp
+            - containerPort: 8025
+              name: http
+              hostPort: 8025
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tracelytag-mailpit-svc
+  namespace: tracelytag
+  labels:
+    app: tracelytag-mailpit
+spec:
+  ports:
+    - port: 1025
+      targetPort: 1025
+      name: smtp
+    - port: 8025
+      targetPort: 8025
+      name: http
+  selector:
+    app: tracelytag-mailpit
+  type: ClusterIP

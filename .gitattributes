@@ -2,4 +2,3 @@ zipFile.zip filter=lfs diff=lfs merge=lfs -text
 vercel.json merge=ours
 package.json merge-ours
 .env merge-ours
-graphify-out/graph.json merge=graphify

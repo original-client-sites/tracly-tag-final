@@ -20,7 +20,7 @@ export const HealthCheckResponse = zod.object({
  * @summary Log in with username + password
  */
 export const LoginBody = zod.object({
-  "username": zod.string(),
+  "username": zod.string().describe('Username or email address'),
   "password": zod.string()
 })
 
@@ -33,7 +33,9 @@ export const LoginResponse = zod.object({
   "companyName": zod.string().nullable(),
   "companyUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "enabledModules": zod.string()
+  "enabledModules": zod.string(),
+  "isImpersonating": zod.boolean().optional(),
+  "impersonatorUsername": zod.string().optional()
 })
 
 
@@ -44,7 +46,7 @@ export const RegisterBody = zod.object({
   "username": zod.string(),
   "email": zod.string(),
   "password": zod.string(),
-  "phone": zod.string().nullish(),
+  "phone": zod.string(),
   "companyName": zod.string(),
   "companyEmail": zod.string(),
   "companyWebsiteUrl": zod.string()
@@ -63,7 +65,9 @@ export const GetCurrentUserResponse = zod.object({
   "companyName": zod.string().nullable(),
   "companyUrl": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "enabledModules": zod.string()
+  "enabledModules": zod.string(),
+  "isImpersonating": zod.boolean().optional(),
+  "impersonatorUsername": zod.string().optional()
 })
 
 
@@ -91,7 +95,6 @@ export const ListCompaniesResponse = zod.array(ListCompaniesResponseItem)
 
 
 export const createCompanyBodyGstinRegExp = new RegExp('^[0-9]{2}[a-zA-Z0-9]{10}[a-zA-Z0-9][zZ][a-zA-Z0-9]?$');
-export const companyUrlVerifyRegExp = new RegExp('^$|^verify\\.[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
 
 
 export const CreateCompanyBody = zod.object({
@@ -99,7 +102,7 @@ export const CreateCompanyBody = zod.object({
   "email": zod.string(),
   "address": zod.string(),
   "gstin": zod.string().regex(createCompanyBodyGstinRegExp).nullish(),
-  "companyUrl": zod.string().regex(companyUrlVerifyRegExp, "Domain must use 'verify' subdomain (e.g. verify.company.com)").nullish(),
+  "companyUrl": zod.string().nullish(),
   "pan": zod.string().nullish(),
   "cin": zod.string().nullish(),
   "msmeRegistrationNo": zod.string().nullish(),
@@ -133,7 +136,7 @@ export const GetMyCompanyResponse = zod.object({
 
 
 export const UpdateMyCompanyBody = zod.object({
-  "companyUrl": zod.string().regex(companyUrlVerifyRegExp, "Domain must use 'verify' subdomain (e.g. verify.company.com)").nullish()
+  "companyUrl": zod.string().nullish()
 })
 
 export const updateMyCompanyResponseGstinRegExp = new RegExp('^[0-9]{2}[a-zA-Z0-9]{10}[a-zA-Z0-9][zZ][a-zA-Z0-9]?$');
@@ -371,7 +374,6 @@ export const ListLocationsResponse = zod.array(ListLocationsResponseItem)
 
 
 export const CreateLocationBody = zod.object({
-  "companyId": zod.number().nullish(),
   "locationType": zod.string(),
   "uniqueName": zod.string(),
   "locationName": zod.string(),
@@ -579,7 +581,8 @@ export const GetProductReportResponseItem = zod.object({
   "size": zod.string(),
   "total": zod.number(),
   "mapped": zod.number(),
-  "unmapped": zod.number()
+  "unmapped": zod.number(),
+  "createdAt": zod.string()
 })
 export const GetProductReportResponse = zod.array(GetProductReportResponseItem)
 

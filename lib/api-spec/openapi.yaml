@@ -667,6 +667,7 @@ components:
       properties:
         username:
           type: string
+          description: Username or email address
         password:
           type: string
       required: [username, password]
@@ -681,14 +682,14 @@ components:
         password:
           type: string
         phone:
-          type: ["string", "null"]
+          type: string
         companyName:
           type: string
         companyEmail:
           type: string
         companyWebsiteUrl:
           type: string
-      required: [username, email, password, companyName, companyEmail, companyWebsiteUrl]
+      required: [username, email, password, phone, companyName, companyEmail, companyWebsiteUrl]
 
     AuthSession:
       type: object
@@ -710,6 +711,10 @@ components:
         isActive:
           type: boolean
         enabledModules:
+          type: string
+        isImpersonating:
+          type: boolean
+        impersonatorUsername:
           type: string
       required: [id, username, email, role, companyId, companyName, isActive, enabledModules]
 

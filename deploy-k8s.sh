@@ -137,11 +137,12 @@ echo "[3/8] Applying Namespace and Secrets..."
 kubectl apply -f "${K8S_DIR}/00-namespace.yaml"
 kubectl apply -f "${K8S_DIR}/01-configmap-secrets.yaml"
 
-# 5. Deploy Persistent Storage & Caching Layer (Postgres, PgBouncer, Redis)
-echo "[4/8] Deploying Infrastructure (PostgreSQL, PgBouncer, Redis)..."
+# 5. Deploy Persistent Storage & Caching Layer (Postgres, PgBouncer, Redis, Mailpit)
+echo "[4/8] Deploying Infrastructure (PostgreSQL, PgBouncer, Redis, Mailpit)..."
 kubectl apply -f "${K8S_DIR}/01b-postgres.yaml"
 kubectl apply -f "${K8S_DIR}/02-pgbouncer.yaml"
 kubectl apply -f "${K8S_DIR}/03-redis.yaml"
+kubectl apply -f "${K8S_DIR}/03b-mailpit.yaml"
 
 # 6. Deploy Workloads & Update Image Tags
 echo "[5/8] Deploying Application Microservices & Setting Docker Hub Images..."

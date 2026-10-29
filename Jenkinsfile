@@ -264,11 +264,12 @@ pipeline {
                         kubectl apply -f "${K8S_DIR}/01-configmap-secrets.yaml"
                     '''
 
-                    echo "[*] Step 2: Applying Data Layer (PostgreSQL, PgBouncer, Redis)..."
+                    echo "[*] Step 2: Applying Data Layer & Mail Server (PostgreSQL, PgBouncer, Redis, Mailpit)..."
                     sh '''
                         kubectl apply -f "${K8S_DIR}/01b-postgres.yaml"
                         kubectl apply -f "${K8S_DIR}/02-pgbouncer.yaml"
                         kubectl apply -f "${K8S_DIR}/03-redis.yaml"
+                        kubectl apply -f "${K8S_DIR}/03b-mailpit.yaml"
                     '''
                 }
             }

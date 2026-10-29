@@ -9,7 +9,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { 
   QrCode, Loader2, MapPin, Mail, Lock, User, Phone, 
   Building2, Globe, Fingerprint, Laptop, X, Check, 
-  ExternalLink, RefreshCw, Terminal, TerminalSquare, ShieldAlert
+  ExternalLink, RefreshCw, Terminal, TerminalSquare, ShieldAlert,
+  Eye, EyeOff, KeyRound, Sparkles, CheckCircle2
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -28,20 +29,20 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useDevOptionsVisibility } from "@/hooks/use-dev-options-visibility";
 
 const loginSchema = z.object({
-  username: z.string().min(1, "Username is required"),
+  username: z.string().min(1, "Username or email is required"),
   password: z.string().min(1, "Password is required"),
   location: z.string().optional(),
 });
 
 const signUpSchema = z.object({
-  username: z.string().min(1, "Username is required"),
-  email: z.string().email("Invalid email address"),
+  username: z.string().trim().min(1, "Username is required"),
+  email: z.string().trim().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  phone: z.string().optional(),
-  companyName: z.string().min(1, "Company Name is required"),
-  companyEmail: z.string().email("Invalid company email"),
-  companyWebsiteUrl: z.string().min(1, "Website URL is required"),
-  location: z.string().optional(),
+  phone: z.string().trim().min(1, "Phone number is required"),
+  companyName: z.string().trim().min(1, "Company Name is required"),
+  companyEmail: z.string().trim().email("Invalid company email"),
+  companyWebsiteUrl: z.string().trim().min(1, "Website URL is required"),
+  location: z.string().trim().min(1, "Session location is required"),
 });
 
 export default function Login() {
@@ -52,6 +53,8 @@ export default function Login() {
   const { hideDevOptions, hideSsoOptions } = useDevOptionsVisibility();
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showSignUpPassword, setShowSignUpPassword] = useState(false);
 
   // --- Passkey States ---
   const [isPasskeySimulatorOpen, setIsPasskeySimulatorOpen] = useState(false);
@@ -80,6 +83,99 @@ export default function Login() {
   const [enteredOtp, setEnteredOtp] = useState("");
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [timer, setTimer] = useState(300);
+
+  // --- Forgot / Reset Password States ---
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+  const [forgotPasswordStep, setForgotPasswordStep] = useState<"request" | "verify">("request");
+  const [resetIdentifier, setResetIdentifier] = useState("");
+  const [isSendingReset, setIsSendingReset] = useState(false);
+  const [forgotPasswordError, setForgotPasswordError] = useState<string | null>(null);
+  const [forgotPasswordSuccess, setForgotPasswordSuccess] = useState<string | null>(null);
+  const [resetMaskedEmail, setResetMaskedEmail] = useState("");
+  const [resetOtpCode, setResetOtpCode] = useState("");
+  const [resetNewPassword, setResetNewPassword] = useState("");
+  const [resetConfirmPassword, setResetConfirmPassword] = useState("");
+  const [showResetNewPassword, setShowResetNewPassword] = useState(false);
+  const [isSubmittingReset, setIsSubmittingReset] = useState(false);
+
+  const handleRequestPasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetIdentifier.trim()) {
+      setForgotPasswordError("Please enter your email or username");
+      return;
+    }
+    setIsSendingReset(true);
+    setForgotPasswordError(null);
+    setForgotPasswordSuccess(null);
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier: resetIdentifier.trim() }),
+      });
+      const text = await res.text();
+      let data: any = {};
+      try { data = JSON.parse(text); } catch { data = { error: text || "Network error occurred" }; }
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to process request");
+      }
+      setResetMaskedEmail(data.email || "");
+      setForgotPasswordSuccess(data.message || "Reset instructions sent to your email.");
+      setForgotPasswordStep("verify");
+      toast.success(data.message || "Reset instructions sent!");
+    } catch (err: any) {
+      setForgotPasswordError(err.message || "Failed to send reset instructions");
+      toast.error(err.message || "Error sending reset email");
+    } finally {
+      setIsSendingReset(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetOtpCode.trim()) {
+      setForgotPasswordError("Please enter the 6-digit confirmation code from your email.");
+      return;
+    }
+    if (resetNewPassword.length < 6) {
+      setForgotPasswordError("Password must be at least 6 characters.");
+      return;
+    }
+    if (resetNewPassword !== resetConfirmPassword) {
+      setForgotPasswordError("Passwords do not match.");
+      return;
+    }
+    setIsSubmittingReset(true);
+    setForgotPasswordError(null);
+    try {
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          otpCode: resetOtpCode.trim(),
+          newPassword: resetNewPassword,
+        }),
+      });
+      const text = await res.text();
+      let data: any = {};
+      try { data = JSON.parse(text); } catch { data = { error: text || "Network error occurred" }; }
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to update password");
+      }
+      toast.success("Password reset successfully! You can now log in.");
+      setIsForgotPasswordOpen(false);
+      setForgotPasswordStep("request");
+      loginForm.setValue("password", "");
+      if (resetIdentifier) {
+        loginForm.setValue("username", resetIdentifier);
+      }
+    } catch (err: any) {
+      setForgotPasswordError(err.message || "Failed to reset password");
+      toast.error(err.message || "Failed to reset password");
+    } finally {
+      setIsSubmittingReset(false);
+    }
+  };
 
   // --- SMTP Test States ---
   const [showSmtpTest, setShowSmtpTest] = useState(false);
@@ -319,7 +415,7 @@ export default function Login() {
 
   function onLoginSubmit(values: z.infer<typeof loginSchema>) {
     const loginData = {
-      username: values.username,
+      username: values.username.trim(),
       password: values.password,
     };
     loginMutation.mutate({ data: loginData }, {
@@ -343,20 +439,20 @@ export default function Login() {
         handleRedirect();
       },
       onError: (error: any) => {
-        toast.error(error?.data?.error || "Invalid username or password");
+        toast.error(error?.data?.error || "Invalid username/email or password");
       }
     });
   }
 
   function onSignUpSubmit(values: z.infer<typeof signUpSchema>) {
     const signUpData = {
-      username: values.username,
-      email: values.email,
+      username: values.username.trim(),
+      email: values.email.trim(),
       password: values.password,
-      phone: values.phone || null,
-      companyName: values.companyName,
-      companyEmail: values.companyEmail,
-      companyWebsiteUrl: values.companyWebsiteUrl,
+      phone: values.phone.trim(),
+      companyName: values.companyName.trim(),
+      companyEmail: values.companyEmail.trim(),
+      companyWebsiteUrl: values.companyWebsiteUrl.trim(),
     };
     registerMutation.mutate({ data: signUpData }, {
       onSuccess: () => {
@@ -855,7 +951,7 @@ export default function Login() {
                               <div className="flex items-center w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 h-12 rounded-lg overflow-hidden pl-4 pr-2 gap-3 focus-within:border-safety-blue focus-within:ring-1 focus-within:ring-safety-blue/20 transition-all">
                                 <FormControl>
                                   <Input 
-                                    placeholder="sys_admin_01" 
+                                    placeholder="sys_admin_01 or admin@tracelytag.com" 
                                     className="bg-transparent border-0 shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm font-mono tracking-wide w-full h-full p-0 text-midnight-navy dark:text-white placeholder-slate-400" 
                                     {...field} 
                                   />
@@ -875,19 +971,42 @@ export default function Login() {
                                   <span className="material-symbols-outlined text-[14px]">lock</span>
                                   PASSWORD
                                 </FormLabel>
-                                <a className="text-[11px] font-bold tracking-wider text-safety-blue hover:underline transition-all uppercase" href="#">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setIsForgotPasswordOpen(true);
+                                    setForgotPasswordStep("request");
+                                    setForgotPasswordError(null);
+                                    setForgotPasswordSuccess(null);
+                                    const currentUsername = loginForm.getValues("username");
+                                    if (currentUsername) setResetIdentifier(currentUsername);
+                                  }}
+                                  className="text-[11px] font-bold tracking-wider text-safety-blue hover:underline transition-all uppercase cursor-pointer"
+                                >
                                   Forgot Password?
-                                </a>
+                                </button>
                               </div>
-                              <div className="relative flex items-center w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 h-12 rounded-lg overflow-hidden pl-4 pr-12 gap-3 focus-within:border-safety-blue focus-within:ring-1 focus-within:ring-safety-blue/20 transition-all">
+                              <div className="relative flex items-center w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 h-12 rounded-lg overflow-hidden pl-4 pr-3 gap-2 focus-within:border-safety-blue focus-within:ring-1 focus-within:ring-safety-blue/20 transition-all">
                                 <FormControl>
                                   <Input 
-                                    type="password" 
+                                    type={showPassword ? "text" : "password"} 
                                     placeholder="••••••••••••" 
-                                    className="bg-transparent border-0 shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm font-mono tracking-wide w-full h-full p-0 text-midnight-navy dark:text-white placeholder-slate-400" 
+                                    className="bg-transparent border-0 shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm font-mono tracking-wide flex-1 h-full p-0 text-midnight-navy dark:text-white placeholder-slate-400" 
                                     {...field} 
                                   />
                                 </FormControl>
+                                <button
+                                  type="button"
+                                  onClick={() => setShowPassword((prev) => !prev)}
+                                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-md transition-colors cursor-pointer shrink-0 focus:outline-none flex items-center justify-center"
+                                  title={showPassword ? "Hide password" : "Show password"}
+                                >
+                                  {showPassword ? (
+                                    <EyeOff className="h-4 w-4" />
+                                  ) : (
+                                    <Eye className="h-4 w-4" />
+                                  )}
+                                </button>
                               </div>
                               <FormMessage className="ml-1 text-[10px]" />
                             </FormItem>
@@ -967,7 +1086,7 @@ export default function Login() {
                             onClick={() => setAuthMode("signup")}
                             className="font-body-sm text-xs text-slate-500 dark:text-slate-400 hover:text-midnight-navy dark:hover:text-white flex items-center gap-1 transition-colors cursor-pointer"
                           >
-                            Need access? <span className="text-safety-blue font-bold">Request Access</span>
+                            Need access? <span className="text-safety-blue font-bold">Create account</span>
                           </button>
                         </div>
                       </form>
@@ -1032,15 +1151,27 @@ export default function Login() {
                                   <span className="material-symbols-outlined text-[14px]">lock</span>
                                   Password
                                 </FormLabel>
-                                <div className="flex items-center w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 h-12 rounded-lg overflow-hidden pl-4 pr-2 gap-3 focus-within:border-safety-blue focus-within:ring-1 focus-within:ring-safety-blue/20 transition-all">
+                                <div className="relative flex items-center w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 h-12 rounded-lg overflow-hidden pl-4 pr-3 gap-2 focus-within:border-safety-blue focus-within:ring-1 focus-within:ring-safety-blue/20 transition-all">
                                   <FormControl>
                                     <Input 
-                                      type="password" 
+                                      type={showSignUpPassword ? "text" : "password"} 
                                       placeholder="Minimum 6 characters" 
-                                      className="bg-transparent border-0 shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm font-mono tracking-wide w-full h-full p-0 text-midnight-navy dark:text-white placeholder-slate-400" 
+                                      className="bg-transparent border-0 shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm font-mono tracking-wide flex-1 h-full p-0 text-midnight-navy dark:text-white placeholder-slate-400" 
                                       {...field} 
                                     />
                                   </FormControl>
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowSignUpPassword((prev) => !prev)}
+                                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-md transition-colors cursor-pointer shrink-0 focus:outline-none flex items-center justify-center"
+                                    title={showSignUpPassword ? "Hide password" : "Show password"}
+                                  >
+                                    {showSignUpPassword ? (
+                                      <EyeOff className="h-4 w-4" />
+                                    ) : (
+                                      <Eye className="h-4 w-4" />
+                                    )}
+                                  </button>
                                 </div>
                                 <FormMessage className="ml-1 text-[10px]" />
                               </FormItem>
@@ -1058,7 +1189,7 @@ export default function Login() {
                                 <div className="flex items-center w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 h-12 rounded-lg overflow-hidden pl-4 pr-2 gap-3 focus-within:border-safety-blue focus-within:ring-1 focus-within:ring-safety-blue/20 transition-all">
                                   <FormControl>
                                     <Input 
-                                      placeholder="Phone number (optional)" 
+                                      placeholder="Enter phone number" 
                                       className="bg-transparent border-0 shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm font-mono tracking-wide w-full h-full p-0 text-midnight-navy dark:text-white placeholder-slate-400" 
                                       {...field} 
                                     />
@@ -1150,7 +1281,7 @@ export default function Login() {
                                 <div className="flex items-center w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 h-12 rounded-lg overflow-hidden pl-4 pr-1 gap-3 focus-within:border-safety-blue focus-within:ring-1 focus-within:ring-safety-blue/20 transition-all">
                                   <FormControl>
                                     <Input 
-                                      placeholder="Start location (optional)" 
+                                      placeholder="Enter session location" 
                                       className="bg-transparent border-0 shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm tracking-wide w-full h-full p-0 text-midnight-navy dark:text-white placeholder-slate-400" 
                                       {...field} 
                                     />
@@ -1585,6 +1716,203 @@ export default function Login() {
                     Restart Flow
                   </Button>
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Forgot / Reset Password Modal */}
+      <AnimatePresence>
+        {isForgotPasswordOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl text-white relative"
+            >
+              <div className="h-1 bg-gradient-to-r from-blue-600 via-indigo-500 to-emerald-500" />
+              
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center">
+                      <KeyRound className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-white">Password Recovery</h3>
+                      <p className="text-[11px] text-slate-400">TracelyTag Security Protocol</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsForgotPasswordOpen(false)}
+                    className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {forgotPasswordError && (
+                  <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2">
+                    <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+                    <span className="leading-relaxed">{forgotPasswordError}</span>
+                  </div>
+                )}
+
+                {forgotPasswordStep === "request" ? (
+                  <form onSubmit={handleRequestPasswordReset} className="space-y-4">
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      Enter the username or email address associated with your account. We will send you recovery instructions and a secure authorization code.
+                    </p>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
+                        Email or Username
+                      </label>
+                      <Input
+                        type="text"
+                        placeholder="e.g. supermaster or admin@company.com"
+                        value={resetIdentifier}
+                        onChange={(e) => setResetIdentifier(e.target.value)}
+                        className="bg-slate-950 border-slate-800 text-white placeholder-slate-500 font-mono text-sm h-11 rounded-xl focus:border-blue-500"
+                        required
+                        autoFocus
+                      />
+                    </div>
+
+                    <div className="pt-2 flex gap-3">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setIsForgotPasswordOpen(false)}
+                        className="flex-1 text-slate-400 hover:text-white border border-slate-800 rounded-xl h-11 text-xs"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={isSendingReset}
+                        className="flex-1 bg-blue-600 hover:bg-blue-500 text-white rounded-xl h-11 text-xs font-semibold flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20"
+                      >
+                        {isSendingReset ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Dispatching...
+                          </>
+                        ) : (
+                          <>
+                            <Mail className="w-4 h-4" />
+                            Send Instructions
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </form>
+                ) : (
+                  <form onSubmit={handleResetPasswordSubmit} className="space-y-4">
+                    <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-start gap-2.5 text-xs text-emerald-300">
+                      <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-400" />
+                      <div>
+                        Reset instructions sent{resetMaskedEmail ? ` to ${resetMaskedEmail}` : ""}. 
+                        You can reset directly below using your 6-digit code or click the email link.
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
+                        6-Digit Confirmation Code
+                      </label>
+                      <Input
+                        type="text"
+                        placeholder="e.g. 583921"
+                        value={resetOtpCode}
+                        onChange={(e) => setResetOtpCode(e.target.value)}
+                        className="bg-slate-950 border-slate-800 text-white placeholder-slate-500 font-mono text-center tracking-widest text-lg h-11 rounded-xl focus:border-blue-500"
+                        required
+                        maxLength={6}
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
+                        New Password
+                      </label>
+                      <div className="relative flex items-center bg-slate-950 border border-slate-800 rounded-xl overflow-hidden focus-within:border-blue-500">
+                        <Input
+                          type={showResetNewPassword ? "text" : "password"}
+                          placeholder="••••••••••••"
+                          value={resetNewPassword}
+                          onChange={(e) => setResetNewPassword(e.target.value)}
+                          className="bg-transparent border-0 text-white font-mono text-sm h-11 flex-1 px-3.5"
+                          required
+                          minLength={6}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowResetNewPassword(!showResetNewPassword)}
+                          className="text-slate-400 hover:text-slate-200 p-2.5 transition-colors focus:outline-none"
+                        >
+                          {showResetNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
+                        Confirm New Password
+                      </label>
+                      <Input
+                        type={showResetNewPassword ? "text" : "password"}
+                        placeholder="••••••••••••"
+                        value={resetConfirmPassword}
+                        onChange={(e) => setResetConfirmPassword(e.target.value)}
+                        className="bg-slate-950 border-slate-800 text-white font-mono text-sm h-11 rounded-xl focus:border-blue-500"
+                        required
+                        minLength={6}
+                      />
+                    </div>
+
+                    <div className="pt-2 flex flex-col gap-2">
+                      <Button
+                        type="submit"
+                        disabled={isSubmittingReset || resetNewPassword.length < 6 || resetNewPassword !== resetConfirmPassword}
+                        className="w-full bg-blue-600 hover:bg-blue-500 text-white rounded-xl h-11 text-xs font-semibold flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20 disabled:opacity-50"
+                      >
+                        {isSubmittingReset ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Updating Password...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4" />
+                            Update Password & Sign In
+                          </>
+                        )}
+                      </Button>
+
+                      <div className="flex justify-between items-center text-[11px] pt-1 text-slate-400">
+                        <button
+                          type="button"
+                          onClick={() => setForgotPasswordStep("request")}
+                          className="hover:text-white underline cursor-pointer"
+                        >
+                          Didn't get code? Resend
+                        </button>
+                        <a
+                          href={`/reset-password${resetOtpCode ? `?code=${encodeURIComponent(resetOtpCode)}` : ""}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-400 hover:text-blue-300 flex items-center gap-1 hover:underline"
+                        >
+                          Open Reset Page <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    </div>
+                  </form>
+                )}
               </div>
             </motion.div>
           </div>

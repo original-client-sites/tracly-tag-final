@@ -18,7 +18,21 @@ services:
       timeout: 5s
       retries: 20
 
-  # 2. Backend API Server Service
+  # 2. In-Docker Local & VPS Mail Server (Mailpit: SMTP & Web Preview)
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: traclytag-mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # SMTP server port
+      - "8025:8025" # Webmail UI port
+    environment:
+      MP_MAX_MESSAGES: 5000
+      MP_DATABASE: ""
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+
+  # 3. Backend API Server Service
   backend:
     build:
       context: .
@@ -32,9 +46,13 @@ services:
     environment:
       - PORT=3000
       - DATABASE_URL=postgresql://${POSTGRES_USER:-tracelytag}:${POSTGRES_PASSWORD:-tracelytag_secret_2026}@db:5432/${POSTGRES_DB:-tracelytag}
+      - SMTP_HOST=${SMTP_HOST:-mailpit}
+      - SMTP_PORT=${SMTP_PORT:-1025}
     depends_on:
       db:
         condition: service_healthy
+      mailpit:
+        condition: service_started
     volumes:
       - ./artifacts/api-server/uploads:/app/artifacts/api-server/uploads
     healthcheck:
@@ -44,7 +62,7 @@ services:
       retries: 5
       start_period: 10s
 
-  # 3. Frontend Web Client Service (Nginx)
+  # 4. Frontend Web Client Service (Nginx)
   frontend:
     build:
       context: .

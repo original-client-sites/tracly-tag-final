@@ -10,4 +10,4 @@ export * from "./customerScans";
 export * from "./counter";
 export * from "./systemConfigs";
 export * from "./ssoRequests";
-
+export * from "./passwordResets";

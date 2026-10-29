@@ -25,6 +25,7 @@ export const Role = {
 } as const;
 
 export interface LoginBody {
+  /** Username or email address */
   username: string;
   password: string;
 }
@@ -33,8 +34,7 @@ export interface RegisterBody {
   username: string;
   email: string;
   password: string;
-  /** @nullable */
-  phone?: string | null;
+  phone: string;
   companyName: string;
   companyEmail: string;
   companyWebsiteUrl: string;
@@ -265,7 +265,6 @@ export interface Location {
 }
 
 export interface CreateLocationBody {
-  companyId?: number | null;
   locationType: string;
   uniqueName: string;
   locationName: string;
